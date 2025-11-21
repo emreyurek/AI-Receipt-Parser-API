@@ -55,6 +55,7 @@ namespace ReceiptParserAPI.Services
 
             return result;
         }
+
         public async Task<(decimal TotalSpent, int Count)?> GetUserTotalSpentAsync(int userId)
         {
             var totalSpentDouble = await _context.Receipts
@@ -71,6 +72,7 @@ namespace ReceiptParserAPI.Services
 
             return ((decimal)totalSpentDouble.Value, receiptCount);
         }
+
         public async Task<IEnumerable<object>> GetAllReceiptsAsync()
         {
             var receipts = await _context.Receipts
@@ -93,6 +95,7 @@ namespace ReceiptParserAPI.Services
 
             return receipts;
         }
+
         public async Task<bool> DeleteReceiptAsync(int receiptId, int userId)
         {
             var receipt = await _context.Receipts
@@ -143,6 +146,19 @@ namespace ReceiptParserAPI.Services
                 TotalSpent = (decimal)r.TotalSpent,
                 Currency = "TRY"
             });
+        }
+
+        public async Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync()
+        {
+            return await _context.Categories
+               .Select(c => new CategoryDto
+               {
+                   Id = c.Id,
+                   Name = c.Name
+               })
+               .OrderBy(c => c.Name)
+               .ToListAsync();
+
         }
     }
 }

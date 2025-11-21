@@ -225,7 +225,7 @@ namespace ReceiptParserAPI.Controllers
             return Ok(new { success = true, message = "Fiş başarıyla silindi." });
         }
 
-        // --- 4. KATEGORİ BAZLI HARCAMA ÖZETİ RAPORU ---
+        // --- 6. KATEGORİ BAZLI HARCAMA ÖZETİ RAPORU ---
         //(api/receipt/summary/categories?startDate=...)
         [HttpGet("summary/categories")]
         public async Task<IActionResult> GetCategorySummary([FromQuery] ReceiptFilterDto filter)
@@ -244,6 +244,15 @@ namespace ReceiptParserAPI.Controllers
             }
 
             return Ok(report);
+        }
+
+        // --- 7. KATEGORİLERİ LİSTELEME ---
+        [HttpGet("categories")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetCategories()
+        {
+            var categories = await _receiptService.GetAllCategoriesAsync();
+            return Ok(categories);
         }
     }
 }

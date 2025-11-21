@@ -9,5 +9,6 @@ namespace ReceiptParserAPI.Services
         Task<IEnumerable<object>> GetAllReceiptsAsync();
         Task<bool> DeleteReceiptAsync(int receiptId, int userId);
         Task<IEnumerable<object>> GetCategoryReportAsync(int userId, ReceiptFilterDto filter);
+        Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync();
     }
 }
