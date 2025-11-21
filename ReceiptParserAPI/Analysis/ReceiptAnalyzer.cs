@@ -15,7 +15,22 @@ namespace ReceiptParserAPI.Analysis
             string jsonFormat = "{\"StoreName\":\"\",\"ReceiptDate\":\"yyyy-MM-dd\",\"TotalAmount\":0.00, \"LineItems\": [{\"ItemName\":\"\",\"Quantity\":0.00,\"UnitPrice\":0.00,\"TotalLineAmount\":0.00}]}";
 
             string prompt =
-                $"Bu fiş görselini analiz et. Fişten mağaza adını (StoreName), işlem tarihini (ReceiptDate), genel toplam tutarı (TotalAmount) ve tüm ürün kalemlerini (LineItems) bul. Çıktıyı kesinlikle bu formatta tek bir JSON nesnesi olarak ver: {jsonFormat}. Başka hiçbir metin veya açıklama EKLEME.";
+                $"Bu fiş görselini analiz et. Fişten mağaza adını (StoreName), işlem tarihini (ReceiptDate), genel toplam tutarı (TotalAmount) ve ürünleri (LineItems) bul." +
+
+                $"ÜRÜNLERİ LİSTELERKEN ŞU KURALLARI KESİNLİKLE UYGULA:" +
+
+                // Kural 1: Kategori Tahmini
+                $"1. 'Category' alanını SADECE şu listeden seç: [Gıda, Temizlik, Kişisel Bakım, Giyim, Elektronik, Ev Eşyası, İçecek]. Emin değilsen 'Diğer' yaz." +
+
+                // Kural 2: İndirim Hesaplama
+                $"2. 'TotalLineAmount' alanına, ürünün İNDİRİMLER DÜŞÜLDÜKTEN SONRAKİ NET FİYATINI yaz. " +
+                $"   Örnek: Eğer ürün 100 TL ise ve altında 20 TL indirim satırı varsa, ürünü 80 TL olarak kaydet." +
+
+                // Kural 3: Temizlik
+                $"3. İndirim satırlarını, kampanya kodlarını veya ara toplamları AYRI BİR SATIR OLARAK EKLEME. Sadece fiziksel ürünleri listele." +
+
+                // Kural 4: Format
+                $"Çıktıyı kesinlikle bu formatta tek bir JSON nesnesi olarak ver: {jsonFormat}. Başka metin ekleme.";
 
             // Görseli Base64 string'e dönüştürme
             string base64Image = Convert.ToBase64String(imageBytes);

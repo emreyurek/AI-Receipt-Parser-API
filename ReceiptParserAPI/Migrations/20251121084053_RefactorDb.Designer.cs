@@ -11,8 +11,8 @@ using ReceiptParserAPI.Data;
 namespace ReceiptParserAPI.Migrations
 {
     [DbContext(typeof(ReceiptDbContext))]
-    [Migration("20251119131057_AddLineItemsTable")]
-    partial class AddLineItemsTable
+    [Migration("20251121084053_RefactorDb")]
+    partial class RefactorDb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -20,10 +20,28 @@ namespace ReceiptParserAPI.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
 
+            modelBuilder.Entity("ReceiptParserAPI.Models.Category", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Categories");
+                });
+
             modelBuilder.Entity("ReceiptParserAPI.Models.LineItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ItemName")
@@ -43,6 +61,8 @@ namespace ReceiptParserAPI.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
 
                     b.HasIndex("ReceiptId");
 
@@ -114,11 +134,19 @@ namespace ReceiptParserAPI.Migrations
 
             modelBuilder.Entity("ReceiptParserAPI.Models.LineItem", b =>
                 {
+                    b.HasOne("ReceiptParserAPI.Models.Category", "Category")
+                        .WithMany("LineItems")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("ReceiptParserAPI.Models.Receipt", "Receipt")
                         .WithMany("LineItems")
                         .HasForeignKey("ReceiptId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Category");
 
                     b.Navigation("Receipt");
                 });
@@ -132,6 +160,11 @@ namespace ReceiptParserAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ReceiptParserAPI.Models.Category", b =>
+                {
+                    b.Navigation("LineItems");
                 });
 
             modelBuilder.Entity("ReceiptParserAPI.Models.Receipt", b =>

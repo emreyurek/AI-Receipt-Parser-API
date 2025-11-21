@@ -19,7 +19,11 @@ namespace ReceiptParserAPI.Models
 
         public decimal TotalLineAmount { get; set; }
 
-        // İlişki: Navigasyon özelliği
         public Receipt Receipt { get; set; }
+
+        public int CategoryId { get; set; }
+
+        public Category? Category { get; set; }
+
     }
 }

@@ -61,12 +61,41 @@ namespace ReceiptParserAPI.Controllers
                 await file.CopyToAsync(memoryStream);
                 var imageBytes = memoryStream.ToArray();
 
-                
+
                 var analysis = await ReceiptAnalyzer.AnalyzeReceiptImage(imageBytes, apiKey);
 
                 if (analysis.StoreName.Contains("Hata"))
                 {
                     return StatusCode(500, new { success = false, error = analysis.RawText });
+                }
+
+                // Analizden sonra, döngüye girmeden önce kategorileri işlemeliyiz.
+                // 1. Fişteki unique kategorileri bul
+                var distinctCategories = analysis.LineItems?
+                    .Select(i => i.Category ?? "Diğer")
+                    .Distinct()
+                    .ToList() ?? new List<string>();
+
+                // 2. Bu kategorileri veritabanında bul veya oluştur 
+                var categoryMap = new Dictionary<string, Category>();
+
+                foreach (var catName in distinctCategories)
+                {
+                    // Veritabanında var mı?
+                    var existingCat = await _context.Categories.FirstOrDefaultAsync(c => c.Name == catName);
+
+                    if (existingCat != null)
+                    {
+                        categoryMap[catName] = existingCat;
+                    }
+                    else
+                    {
+                        // Yoksa yeni oluştur
+                        var newCat = new Category { Name = catName };
+                        _context.Categories.Add(newCat);
+                        await _context.SaveChangesAsync();
+                        categoryMap[catName] = newCat;
+                    }
                 }
 
                 var receiptEntity = new Receipt
@@ -85,7 +114,8 @@ namespace ReceiptParserAPI.Controllers
                          ItemName = itemDto.ItemName,
                          Quantity = itemDto.Quantity,
                          UnitPrice = itemDto.UnitPrice,
-                         TotalLineAmount = itemDto.TotalLineAmount
+                         TotalLineAmount = itemDto.TotalLineAmount,
+                         Category = categoryMap[itemDto.Category ?? "Diğer"]
                      }).ToList()
                      ?? new List<LineItem>() // Null ise boş liste ata
                 };
@@ -173,6 +203,7 @@ namespace ReceiptParserAPI.Controllers
             return Ok(receipts);
         }
 
+        //  --- 5 FİŞ SİL ---
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> DeleteReceipt(int id)
         {

@@ -92,7 +92,7 @@ namespace ReceiptParserAPI.Services
                 issuer: jwtSettings["Issuer"],
                 audience: jwtSettings["Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(jwtSettings["ExpirationInMinutes"] ?? "3")),
+                expires: DateTime.Now.AddMinutes(double.Parse(jwtSettings["ExpirationInMinutes"] ?? "60")),
                 signingCredentials: creds
             );
 

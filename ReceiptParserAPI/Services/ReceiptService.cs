@@ -61,7 +61,8 @@ namespace ReceiptParserAPI.Services
                     {
                         ItemName = li.ItemName,
                         Quantity = li.Quantity,
-                        TotalLineAmount = li.TotalLineAmount
+                        TotalLineAmount = li.TotalLineAmount,
+                        Category = li.Category.Name ?? "Diğer"
                     }).ToList()
                 })
                 .ToListAsync();
