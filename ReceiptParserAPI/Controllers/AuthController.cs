@@ -1,17 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.AspNetCore.Mvc;
 using ReceiptParserAPI.Data;
 using ReceiptParserAPI.Dto;
-using ReceiptParserAPI.Models;
 using ReceiptParserAPI.Services;
-using System;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace ReceiptParserAPI.Controllers
 {
@@ -22,7 +12,7 @@ namespace ReceiptParserAPI.Controllers
         private readonly ReceiptDbContext _context;
         private readonly IPasswordHasherService _hasher;
         private readonly IConfiguration _configuration;
-        private readonly IAuthService _authService; 
+        private readonly IAuthService _authService;
 
         public AuthController(ReceiptDbContext context, IPasswordHasherService hasher, IConfiguration configuration, IAuthService authService)
         {
@@ -31,7 +21,7 @@ namespace ReceiptParserAPI.Controllers
             _configuration = configuration;
             _authService = authService;
         }
-
+       
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] UserRegisterDto model)
         {
@@ -44,8 +34,7 @@ namespace ReceiptParserAPI.Controllers
 
             return Ok(new { success = true, message = "Kayıt başarılı." });
         }
-
-
+       
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] UserLoginDto model)
         {

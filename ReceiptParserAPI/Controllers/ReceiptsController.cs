@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReceiptParserAPI.Analysis;
 using ReceiptParserAPI.Data;
+using ReceiptParserAPI.Dto;
 using ReceiptParserAPI.Models;
 using ReceiptParserAPI.Services;
 using System.Security.Claims;
@@ -69,20 +70,21 @@ namespace ReceiptParserAPI.Controllers
                     return StatusCode(500, new { success = false, error = analysis.RawText });
                 }
 
-                // Analizden sonra, döngüye girmeden önce kategorileri işlemeliyiz.
+                // --- KATEGORİ İŞLEMLERİ ---
+
                 // 1. Fişteki unique kategorileri bul
                 var distinctCategories = analysis.LineItems?
                     .Select(i => i.Category ?? "Diğer")
                     .Distinct()
                     .ToList() ?? new List<string>();
 
-                // 2. Bu kategorileri veritabanında bul veya oluştur 
+                // 2. Bu kategorileri veritabanında bul eğer veritabanında yoksa oluştur 
                 var categoryMap = new Dictionary<string, Category>();
 
                 foreach (var catName in distinctCategories)
                 {
                     // Veritabanında var mı?
-                    var existingCat = await _context.Categories.FirstOrDefaultAsync(c => c.Name == catName);
+                    var existingCat = await _context.Categories.FirstOrDefaultAsync(c => c.Name.ToLower() == catName.ToLower());
 
                     if (existingCat != null)
                     {
@@ -106,8 +108,6 @@ namespace ReceiptParserAPI.Controllers
                     TotalAmount = analysis.TotalAmount ?? 0,
                     RawJson = analysis.RawText,
                     UploadedAt = DateTime.UtcNow,
-
-                    // Ürünleri Entity'ye Dönüştürme
                     LineItems = analysis.LineItems?
                      .Select(itemDto => new LineItem
                      {
@@ -115,9 +115,9 @@ namespace ReceiptParserAPI.Controllers
                          Quantity = itemDto.Quantity,
                          UnitPrice = itemDto.UnitPrice,
                          TotalLineAmount = itemDto.TotalLineAmount,
-                         Category = categoryMap[itemDto.Category ?? "Diğer"]
+                         Category = categoryMap[itemDto.Category]
                      }).ToList()
-                     ?? new List<LineItem>() // Null ise boş liste ata
+                     ?? new List<LineItem>()
                 };
 
                 _context.Receipts.Add(receiptEntity);
@@ -142,7 +142,7 @@ namespace ReceiptParserAPI.Controllers
             }
         }
 
-        // --- 2. TOPLAM HARCAMA RAPORU (TEMİZLENMİŞ) ---
+        // --- 2. TOPLAM HARCAMA RAPORU ---
         [HttpGet("totalspent")]
         public async Task<IActionResult> GetTotalSpent()
         {
@@ -178,8 +178,9 @@ namespace ReceiptParserAPI.Controllers
         }
 
         // --- 3 KULLANICIYA ÖZEL FİŞ LİSTESİ ---
+        // (api/receipt/list?startDate=...&enddate=...)
         [HttpGet("list")]
-        public async Task<IActionResult> GetReceiptsList()
+        public async Task<IActionResult> GetReceiptsList([FromQuery] ReceiptFilterDto filter)
         {
             // Kullanıcı ID'sini Token'dan Al
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -188,12 +189,12 @@ namespace ReceiptParserAPI.Controllers
                 return Unauthorized(new { error = "Kullanıcı kimliği alınamadı." });
             }
 
-            var receipts = await _receiptService.GetUserReceiptsListAsync(userId);
+            var receipts = await _receiptService.GetUserReceiptsListAsync(userId, filter);
 
             return Ok(receipts);
         }
 
-        //  --- 4 FİŞ LİSTESİ ---
+        //  --- 4 TÜM FİŞ LİSTESİ ---
         [HttpGet("Getall")]
         [AllowAnonymous]
         public async Task<IActionResult> GetAll()
@@ -222,6 +223,27 @@ namespace ReceiptParserAPI.Controllers
             }
 
             return Ok(new { success = true, message = "Fiş başarıyla silindi." });
+        }
+
+        // --- 4. KATEGORİ BAZLI HARCAMA ÖZETİ RAPORU ---
+        //(api/receipt/summary/categories?startDate=...)
+        [HttpGet("summary/categories")]
+        public async Task<IActionResult> GetCategorySummary([FromQuery] ReceiptFilterDto filter)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { error = "Kullanıcı kimliği alınamadı." });
+            }
+
+            var report = await _receiptService.GetCategoryReportAsync(userId, filter);
+
+            if (report == null || !report.Any())
+            {
+                return NotFound(new { message = "Belirtilen tarihlerde harcama kaydı bulunamadı." });
+            }
+
+            return Ok(report);
         }
     }
 }
