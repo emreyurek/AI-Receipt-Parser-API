@@ -1,0 +1,158 @@
+﻿@page "/register"
+@layout EmptyLayout
+@using ReceiptParser.UI.Dto
+@using System.Net.Http.Json
+@using System.ComponentModel.DataAnnotations
+@inject HttpClient Http
+@inject NavigationManager NavManager
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
+<div class="auth-container">
+    <div class="auth-card animate__animated animate__fadeInUp">
+
+        <div class="text-center mb-4">
+            <div class="logo-circle mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" x2="20" y1="8" y2="14" /><line x1="23" x2="17" y1="11" y2="11" /></svg>
+            </div>
+            <h2 class="fw-bold text-dark mb-1">Yeni Hesap Oluştur</h2>
+            <p class="text-muted small">Bütçeni kontrol altına almaya başla.</p>
+        </div>
+
+        <EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+            <DataAnnotationsValidator />
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="registerModel.Username" class="form-control rounded-3" id="regUser" placeholder="Kullanıcı Adı" />
+                <label for="regUser" class="text-muted">Kullanıcı Adı</label>
+                <ValidationMessage For="@(() => registerModel.Username)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="registerModel.Email" class="form-control rounded-3" id="regEmail" placeholder="E-posta" />
+                <label for="regEmail" class="text-muted">E-posta Adresi</label>
+                <ValidationMessage For="@(() => registerModel.Email)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="form-floating mb-4">
+                <InputText @bind-Value="registerModel.Password" type="password" class="form-control rounded-3" id="regPass" placeholder="Şifre" />
+                <label for="regPass" class="text-muted">Şifre</label>
+                <ValidationMessage For="@(() => registerModel.Password)" class="text-danger small mt-1" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger rounded-3 small border-0 bg-danger bg-opacity-10 text-danger mb-3">
+                    @errorMessage
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow-sm btn-auth" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm"></span>
+                }
+                else
+                {
+                    <span>Kayıt Ol</span>
+                }
+            </button>
+        </EditForm>
+
+        <div class="text-center mt-4">
+            <span class="text-muted small">Zaten bir hesabın var mı?</span>
+            <a href="login" class="text-primary fw-bold text-decoration-none ms-1">Giriş Yap</a>
+        </div>
+    </div>
+</div>
+
+<style>
+
+    .auth-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+    }
+
+    .auth-card {
+        background: white;
+        padding: 3rem 2.5rem;
+        border-radius: 24px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.04);
+        border: 1px solid #f0f0f0;
+    }
+
+    .logo-circle {
+        width: 64px;
+        height: 64px;
+        background: #ebf5ff;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .form-control {
+        border: 1px solid #e0e0e0;
+        background-color: #fff;
+    }
+
+        .form-control:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.1);
+        }
+
+    .btn-auth {
+        background-color: #2c3e50;
+        border: none;
+        transition: all 0.2s;
+    }
+
+        .btn-auth:hover {
+            background-color: #34495e;
+            transform: translateY(-1px);
+        }
+
+        .btn-auth:active {
+            transform: scale(0.98);
+        }
+</style>
+
+@code {
+
+    private RegisterDto registerModel = new RegisterDto();
+    private string errorMessage;
+    private bool isLoading = false;
+
+    private async Task HandleRegister()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/auth/register", registerModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var loginData = new { Username = registerModel.Username, Password = registerModel.Password };
+                var loginResponse = await Http.PostAsJsonAsync("api/auth/login", loginData);
+
+                if (loginResponse.IsSuccessStatusCode)
+                {
+                    var result = await loginResponse.Content.ReadFromJsonAsync<LoginResultDto>();
+                    await LocalStorage.SetItemAsync("authToken", result.Token);
+                    await LocalStorage.SetItemAsync("username", result.Username);
+                    NavManager.NavigateTo("/");
+                }
+                else { NavManager.NavigateTo("/login"); }
+            }
+            else { errorMessage = "Kullanıcı adı veya e-posta kullanımda."; }
+        }
+        catch (Exception ex) { errorMessage = "Bağlantı hatası."; }
+        finally { isLoading = false; }
+    }
+}

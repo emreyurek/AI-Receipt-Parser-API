@@ -112,40 +112,36 @@ namespace ReceiptParserAPI.Services
 
         public async Task<IEnumerable<object>> GetCategoryReportAsync(int userId, ReceiptFilterDto filter)
         {
-
             var query = _context.LineItems
-                         .Where(li => li.Receipt.UserId == userId)
-                         .AsQueryable();
+                .Include(li => li.Receipt)
+                .Include(li => li.Category)
+                .Where(li => li.Receipt.UserId == userId)
+                .AsQueryable();
 
             if (filter.StartDate.HasValue)
-            {
                 query = query.Where(li => li.Receipt.ReceiptDate >= filter.StartDate.Value.Date);
-            }
 
             if (filter.EndDate.HasValue)
-            {
                 query = query.Where(li => li.Receipt.ReceiptDate < filter.EndDate.Value.Date.AddDays(1));
-            }
 
-            // Gruplama ve özetleme
             var report = await query
-                .GroupBy(li => li.Category.Name) // Kategori adına göre grupla
+                .GroupBy(li => li.Category.Name)
                 .Select(g => new
                 {
                     CategoryName = g.Key,
-                    TotalSpent = g.Sum(li => (double)li.TotalLineAmount), // Toplam harcama
-                    ItemCount = g.Count() // Ürün sayısı
+                    TotalSpent = g.Sum(li => (double)li.TotalLineAmount),
+                    ItemCount = g.Count(),
+                    // 👇 BU KISIM EKLENDİĞİ İÇİN LİSTE ARTIK GELECEK 👇
+                    Products = g.Select(p => new
+                    {
+                        p.ItemName,
+                        TotalLineAmount = (double)p.TotalLineAmount
+                    }).OrderByDescending(p => p.TotalLineAmount).ToList()
                 })
-                .OrderByDescending(r => r.TotalSpent) // En çok harcanandan en aza sırala
+                .OrderByDescending(r => r.TotalSpent)
                 .ToListAsync();
 
-            return report.Select(r => new
-            {
-                r.CategoryName,
-                r.ItemCount,
-                TotalSpent = (decimal)r.TotalSpent,
-                Currency = "TRY"
-            });
+            return report;
         }
 
         public async Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync()
@@ -160,5 +156,7 @@ namespace ReceiptParserAPI.Services
                .ToListAsync();
 
         }
+
+
     }
 }

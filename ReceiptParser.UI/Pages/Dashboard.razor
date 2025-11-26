@@ -1,0 +1,329 @@
+﻿@page "/dashboard"
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject NavigationManager NavManager
+
+<PageTitle>Harcama Özeti</PageTitle>
+
+<div class="container mt-4" style="max-width: 900px;">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold m-0 text-dark section-title">📊 Raporlar</h2>
+            <small class="text-muted">
+                @(IsFiltered ? $"{startDate?.ToShortDateString()} - {endDate?.ToShortDateString()}" : "Tüm zamanların verileri")
+            </small>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 align-self-start align-self-md-auto">
+            @if (IsFiltered)
+            {
+                <button class="btn btn-light btn-sm rounded-pill text-muted px-3" @onclick="ResetFilter">Tümü</button>
+            }
+            <div class="date-picker-wrapper shadow-sm">
+                <input type="date" class="date-input" @bind="startDate" />
+                <span class="date-separator">-</span>
+                <input type="date" class="date-input" @bind="endDate" />
+                <button class="btn-go" @onclick="ApplyFilter">Go</button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-grow text-primary" role="status"></div>
+        </div>
+    }
+    else if (summaryList != null && summaryList.Any())
+    {
+        <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden total-card">
+            <div class="card-body p-5 text-center position-relative">
+
+                <p class="text-uppercase text-muted mb-2 ls-2 small fw-bold">Toplam Harcama</p>
+                <h1 class="display-3 fw-bolder mb-0 text-dark total-amount-text">
+                    @GrandTotal.ToString("N2") <small class="currency-symbol text-muted">TL</small>
+                </h1>
+                <p class="text-muted mt-2 mb-0 small opacity-75">Bu dönemde toplam @summaryList.Sum(x => x.ItemCount) ürün alındı.</p>
+
+                <div class="card-bottom-line"></div>
+            </div>
+        </div>
+
+        <h5 class="fw-bold mb-3 text-dark px-1 section-subtitle">Harcama Dağılımı</h5>
+
+        <div class="d-flex flex-column gap-3">
+            @foreach (var item in summaryList)
+            {
+                var percentage = GrandTotal > 0 ? (item.TotalSpent / GrandTotal) * 100 : 0;
+                bool isOpen = expandedCategory == item.CategoryName;
+
+                <div class="card border-0 shadow-sm rounded-3 overflow-hidden category-card @(isOpen ? "active-card" : "")">
+                    <div class="card-body p-3 cursor-pointer" @onclick="() => ToggleCategory(item.CategoryName)">
+                        <div class="row align-items-center">
+                            <div class="col-5 col-sm-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="category-dot"></div>
+                                    <div>
+                                        <h6 class="fw-bold mb-0 text-dark text-truncate category-name">@item.CategoryName</h6>
+                                        <small class="text-muted mobile-small-text">@item.ItemCount ürün</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-4 col-sm-5">
+                                <div class="progress rounded-pill" style="height: 6px; background-color: #f1f3f5;">
+                                    <div class="progress-bar rounded-pill" style="width: @(percentage.ToString("0"))%; background-color: #2c3e50;"></div>
+                                </div>
+                            </div>
+                            <div class="col-3 col-sm-3 text-end">
+                                <span class="fw-bold text-dark mobile-amount">@item.TotalSpent.ToString("N0")</span>
+                                <small class="text-muted" style="font-size: 0.7rem;"> TL</small>
+                                <span class="ms-1 text-muted small transition-icon @(isOpen ? "rotate-icon" : "")">▼</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (isOpen)
+                    {
+                        <div class="card-footer bg-white border-top-0 pt-0 pb-3 px-3 animate__animated animate__fadeIn">
+                            <div class="bg-light rounded-3 p-3 mt-2">
+                                <div class="products-scroll-container">
+                                    @if (item.Products != null && item.Products.Any())
+                                    {
+                                        <table class="table table-sm table-borderless mb-0 small">
+                                            <tbody>
+                                                @foreach (var prod in item.Products)
+                                                {
+                                                    <tr>
+                                                        <td class="text-secondary text-truncate" style="max-width: 180px;">@prod.ItemName</td>
+                                                        <td class="text-end fw-bold" style="min-width: 70px;">@prod.TotalLineAmount.ToString("N2")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-center text-muted small m-0">Ürün detayı yok.</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center p-5 bg-white rounded-4 border border-dashed mt-3">
+            <h3 class="text-muted">∅</h3>
+            <p class="text-muted">Veri yok.</p>
+        </div>
+    }
+</div>
+
+<style>
+
+    .ls-2 {
+        letter-spacing: 2px;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .total-card {
+        transition: transform 0.2s;
+    }
+
+    .card-bottom-line {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .date-picker-wrapper {
+        background: white;
+        border-radius: 50px;
+        padding: 4px 6px;
+        display: flex;
+        align-items: center;
+        border: 1px solid #eee;
+    }
+
+    .date-input {
+        border: none;
+        background: transparent;
+        font-size: 0.85rem;
+        width: 105px;
+        text-align: center;
+        color: #555;
+        outline: none;
+        font-family: inherit;
+    }
+
+    .date-separator {
+        color: #ccc;
+        font-weight: bold;
+        margin: 0 2px;
+    }
+
+    .btn-go {
+        background: #2c3e50;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: transform 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .btn-go:active {
+            transform: scale(0.9);
+        }
+
+    .category-card {
+        transition: transform 0.1s, border-color 0.2s;
+    }
+
+        .category-card:active {
+            transform: scale(0.99);
+        }
+
+    .active-card {
+        border: 1px solid #2c3e50 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+    }
+
+    .category-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #2c3e50;
+        border-radius: 50%;
+    }
+
+    .transition-icon {
+        display: inline-block;
+        transition: transform 0.3s ease;
+    }
+
+    .rotate-icon {
+        transform: rotate(180deg);
+    }
+
+    .products-scroll-container {
+        max-height: 200px;
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+        .products-scroll-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .products-scroll-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .products-scroll-container::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+
+
+    @@media (max-width: 768px) {
+        .container {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        .total-amount-text {
+            font-size: 2.5rem;
+        }
+
+        .currency-symbol {
+            font-size: 1.2rem;
+        }
+
+        .date-picker-wrapper {
+            width: 100%;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .date-input {
+            width: 45%;
+        }
+
+        .category-name {
+            font-size: 0.9rem;
+        }
+
+        .mobile-small-text {
+            font-size: 0.65rem !important;
+        }
+
+        .mobile-amount {
+            font-size: 0.9rem;
+        }
+    }
+</style>
+
+@code {
+
+    public class ProductSummaryDto { public string ItemName { get; set; } public decimal TotalLineAmount { get; set; } }
+    public class CategorySummaryWithProductsDto { public string CategoryName { get; set; } public int ItemCount { get; set; } public decimal TotalSpent { get; set; } public List<ProductSummaryDto> Products { get; set; } }
+
+    private List<CategorySummaryWithProductsDto> summaryList;
+    private decimal GrandTotal = 0;
+    private bool isLoading = true;
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private bool IsFiltered => startDate.HasValue || endDate.HasValue;
+    private string expandedCategory = null;
+
+    protected override async Task OnInitializedAsync() { await LoadDashboard(); }
+    private async Task ResetFilter() { startDate = null; endDate = null; await LoadDashboard(); }
+    private async Task ApplyFilter() { await LoadDashboard(); }
+    private void ToggleCategory(string categoryName) { expandedCategory = (expandedCategory == categoryName) ? null : categoryName; }
+
+    private async Task LoadDashboard()
+    {
+        isLoading = true; GrandTotal = 0; summaryList = null;
+        try
+        {
+            var token = await LocalStorage.GetItemAsync<string>("authToken");
+            if (string.IsNullOrEmpty(token)) { NavManager.NavigateTo("/login"); return; }
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var url = "api/receipt/summary/categories";
+            var queryParams = new List<string>();
+            if (startDate.HasValue) queryParams.Add($"startDate={startDate.Value.ToString("yyyy-MM-dd")}");
+            if (endDate.HasValue) queryParams.Add($"endDate={endDate.Value.ToString("yyyy-MM-dd")}");
+            if (queryParams.Any()) url += "?" + string.Join("&", queryParams);
+
+            var response = await Http.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                summaryList = await response.Content.ReadFromJsonAsync<List<CategorySummaryWithProductsDto>>();
+                if (summaryList != null && summaryList.Any())
+                {
+                    GrandTotal = summaryList.Sum(x => x.TotalSpent);
+                    summaryList = summaryList.OrderByDescending(x => x.TotalSpent).ToList();
+                }
+            }
+        }
+        catch (Exception ex) { Console.WriteLine(ex.Message); }
+        finally { isLoading = false; }
+    }
+}

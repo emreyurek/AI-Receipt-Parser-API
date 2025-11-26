@@ -1,0 +1,78 @@
+﻿@inherits LayoutComponentBase
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject NavigationManager NavManager
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4 d-flex justify-content-end align-items-center bg-white border-bottom shadow-sm" style="height: 64px;">
+
+            <div class="dropdown" style="position: relative;">
+                <button class="btn d-flex align-items-center text-decoration-none border-0 bg-transparent p-0"
+                        @onclick="ToggleProfileMenu">
+                    <div class="avatar-circle me-2">
+                        @(string.IsNullOrEmpty(username) ? "U" : username.Substring(0, 1).ToUpper())
+                    </div>
+                    <span class="text-dark small fw-bold">Hesabım</span>
+                    <span class="ms-2 text-muted small" style="font-size: 0.6rem;">▼</span>
+                </button>
+
+                @if (isProfileMenuOpen)
+                {
+                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-3 mt-3 show p-2"
+                        style="position: absolute; right: 0; top: 100%; display: block; min-width: 160px;">
+                        <li>
+                            <button class="dropdown-item small py-2 text-danger fw-bold d-flex align-items-center gap-2" @onclick="Logout">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>
+                                Çıkış Yap
+                            </button>
+                        </li>
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <article class="content px-4 py-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<style>
+    .avatar-circle {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #2c3e50, #34495e);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+</style>
+
+@code {
+    private bool isProfileMenuOpen = false;
+    private string username = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await LocalStorage.GetItemAsync<string>("authToken");
+        if (string.IsNullOrEmpty(token)) NavManager.NavigateTo("/login");
+        else username = await LocalStorage.GetItemAsync<string>("username");
+    }
+
+    private void ToggleProfileMenu() => isProfileMenuOpen = !isProfileMenuOpen;
+
+    private async Task Logout()
+    {
+        await LocalStorage.RemoveItemAsync("authToken");
+        await LocalStorage.RemoveItemAsync("username");
+        NavManager.NavigateTo("/login", true);
+    }
+}

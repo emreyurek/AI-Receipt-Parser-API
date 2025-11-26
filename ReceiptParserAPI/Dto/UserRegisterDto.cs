@@ -1,16 +1,15 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations; 
 
 namespace ReceiptParserAPI.Dto
 {
     public class UserRegisterDto
     {
         [Required]
-        [MaxLength(50)]
         public string Username { get; set; }
 
         [Required]
         [EmailAddress]
-        [MaxLength(100)]
+        [RegularExpression(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", ErrorMessage = "Geçerli bir e-posta giriniz")]
         public string Email { get; set; }
 
         [Required]

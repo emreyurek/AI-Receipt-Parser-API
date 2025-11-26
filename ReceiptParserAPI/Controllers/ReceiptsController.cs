@@ -115,7 +115,7 @@ namespace ReceiptParserAPI.Controllers
                          Quantity = itemDto.Quantity,
                          UnitPrice = itemDto.UnitPrice,
                          TotalLineAmount = itemDto.TotalLineAmount,
-                         Category = categoryMap[itemDto.Category]
+                         Category = categoryMap[itemDto.Category ?? "Diğer"]
                      }).ToList()
                      ?? new List<LineItem>()
                 };
