@@ -369,6 +369,7 @@ FodyWeavers.xsd
 # 1. HASSAS BİLGİLER
 appsettings.json
 appsettings.Development.json
+.env
 
 # 2. SQLITE VERİTABANI DOSYALARI 
 *.sqlite

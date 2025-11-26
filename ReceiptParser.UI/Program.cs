@@ -8,7 +8,8 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // --- API ADRESÝ ---
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7117") });
+//  Docker Compose dosyasýnda verdiðimiz isim.
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://receiptparserapi:8080") });
 
 builder.Services.AddBlazoredLocalStorage();
 

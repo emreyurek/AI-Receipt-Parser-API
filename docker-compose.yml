@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+ 
+  receiptparserapi:
+    container_name: receiptparser-api
+    build:
+      context: ./ReceiptParserAPI
+      dockerfile: Dockerfile
+    ports:
+      - "7117:8080" 
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Production 
+      - GeminiApi__ApiKey=${GEMINI_API_KEY}   
+      - JwtSettings__Secret=${JWT_SECRET_KEY} 
+    volumes:
+      - ./db/receipt_db.sqlite:/app/receipt_db.sqlite 
+    networks:
+      - receipt-network
+
+  receiptparserui:
+    container_name: receiptparser-ui
+    build:
+      context: ./ReceiptParser.UI
+      dockerfile: Dockerfile
+    ports:
+      - "80:80" 
+    depends_on:
+      - receiptparserapi 
+    networks:
+      - receipt-network
+
+networks:
+  receipt-network:
+    driver: bridge 
